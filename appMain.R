@@ -1,33 +1,39 @@
 library(shiny)
+library(DT)
 library(tidyverse)
 library(readxl)
 library(janitor)
-library(DT)
+library(ggplot2)
+library(formattable)
+library(shinyWidgets)
 
-df <- read_xlsx('TestCase.xlsx',sheet = 'Sheet1')
-
-df$Month_Yr <- format(as.Date(sheet1$Date), "%Y-%m")
-
-df$Date <- format(sheet1$Date, "%Y-%m-%d") #Created this to format the dates
-
-df$Time <- format(sheet1$Time, "%H:%M") #Created this to format the time.
-
-df <- df %>% separate(Time2, c("Hour", "Minutes"), sep = ":")
-
+df <- read_xlsx('TestCase.xlsx')
 
 # Define UI for application
 ui <- navbarPage(
     "Application",
     tabPanel("General",
+             setBackgroundColor(
+               color = "efedf5",
+               gradient = c('linear', 'radial'),
+               direction = c('bottom', 'top', 'right', 'left'),
+               shinydashboard = False
+             ),
              sidebarLayout( #All outputs are reactive.
                  sidebarPanel(uiOutput("rowsSelected"), 
                               uiOutput("sum"), 
-                              uiOutput("percentage"), 
+                              uiOutput("percentage"),
+                              uiOutput("workinghour"),
                               tableOutput("result")
                               ),
-                 mainPanel(DT::dataTableOutput("datatable"), 
-                           
-                           plotOutput("timePlot")) 
+                 mainPanel(
+                   div(DT::dataTableOutput("datatable"), style = 'font-size: 90%; width: 90%)',
+                       splitLayout(style = 'border: 1px solid silver:', cellWidths = c(400, 700),
+                                   plotOutput("timePlot"),
+                                   plotOutput('monthPlot')
+                                   )
+                   ) 
+                   )
              )
     )
 )
@@ -57,6 +63,11 @@ server <- function(input, output) {
       
     })
     
+    output$monthPlot <- renderPlot({
+      ggplot(filtered_table(), aes(x=factor(Month), levels=c('Nov-21', 'Dec-21', 'Jan-22', 'Feb-22'))) +
+        geom_bar(fill = 'ffedao0') 
+      
+    })
    
     output$rowsSelected <- renderUI({
         numericInput("rowsSelected", "Rows selected",
@@ -70,11 +81,12 @@ server <- function(input, output) {
                      min = 0)
     })
     
+    
+    
     output$sum <- renderUI({
         numericInput("sum", "Total Cost",
                      value =sum(filtered_table()$cost),
                      min = 0)
-        
     })
     
     
@@ -83,6 +95,13 @@ server <- function(input, output) {
         x <- filtered_table() %>% count(month_yr, sort = TRUE)
         
         as.data.frame(x)
+    })
+    
+    
+    output$workinghour <- renderTable({
+      x <- filtered_table() %>% count(Alert_Generated, sort = TRUE)
+      
+      as.data.frame(x)
     })
 }
 
